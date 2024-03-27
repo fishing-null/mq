@@ -29,7 +29,7 @@ public class MSGQueue {
     private boolean exclusive;
 
     private Map<String,Object> arguments;
-    public String getArgument() {
+    public String getArguments() {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             return objectMapper.writeValueAsString(arguments);
@@ -38,7 +38,7 @@ public class MSGQueue {
         }
     }
 
-    public void setArgument(String argumentsJson) {
+    public void setArguments(String argumentsJson) {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             this.arguments = objectMapper.readValue(argumentsJson, new TypeReference<HashMap<String,Object>>() {
