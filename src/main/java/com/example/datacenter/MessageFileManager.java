@@ -43,4 +43,29 @@ public class MessageFileManager {
             throw new RuntimeException(e);
         }
     }
+
+    //当队列被删,与之对应的消息也就没有作用了,删除消息目录
+    private void destroyQueueDir(String queueName) throws IOException {
+        File queueDirFile = new File(getQueuePath(queueName));
+        boolean ok1 = queueDirFile.delete();
+        File messageStatFile = new File(getMessageStatsPath(queueName));
+        boolean ok2 = messageStatFile.delete();
+        File messageDataFile = new File(getMessageDataPath(queueName));
+        boolean ok3 = messageDataFile.delete();
+        if(!ok1 || !ok2 || !ok3){
+            throw new IOException("删除目录和文件失败!queueDir=" + messageDataFile.getAbsolutePath());
+        }
+    }
+    //判断messageStatFile&messageDataFile目录文件是否存在
+    private boolean checkFileExists(String queueName){
+        File messageStatFile = new File(getMessageStatsPath(queueName));
+        if(!messageStatFile.exists()){
+            return false;
+        }
+        File messageDataFile = new File(getMessageDataPath(queueName));
+        if(!messageDataFile.exists()){
+            return false;
+        }
+        return true;
+    };
 }
