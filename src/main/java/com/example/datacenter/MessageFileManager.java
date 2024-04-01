@@ -26,7 +26,7 @@ public class MessageFileManager {
     private String getQueueStatsPath(String queueName){
         return getQueuePath(queueName) + "message_stats.txt";
     }
-    //读取stats文件中数据
+    //更具队列名称,读取stats文件中数据
     private Stat readStat(String queueName){
         Stat stat = new Stat();
         try(InputStream inputStream = new FileInputStream(getQueueStatsPath(queueName))) {
@@ -136,5 +136,33 @@ public class MessageFileManager {
         stat.totalMessageCount += 1;
         stat.validMessageCount += 1;
         writeStat(msgQueue.getName(),stat);
+    }
+    //从文件中逻辑删除队列中的一条消息
+    //1.把文件中的数据读出来,还原成Message对象
+    //2.将message对象中的isValid字段更改为0
+    //3.将message对象序列化,重新写入文件
+    //4.更新统计文件
+    public void deleteMessage(MSGQueue msgQueue,Message message) throws IOException, ClassNotFoundException {
+        synchronized (msgQueue){
+            try(RandomAccessFile randomAccessFile = new RandomAccessFile(msgQueue.getName(),"rw")){
+                byte[] bufferSrc = new byte[(int) (message.getOffsetEnd() - message.getOffsetBeg())];
+                //改变读取下标
+                randomAccessFile.seek(message.getOffsetBeg());
+                randomAccessFile.read(bufferSrc);
+                //将bufferSrc取出来,从二进制数组转换成类对象
+                Message diskMsg = (Message) BinaryTool.fromBytes(bufferSrc);
+                if(diskMsg.getIsValid() == 0x1) {
+                    //只有当消息有效时才进行删除
+                    diskMsg.setIsValid((byte) 0x0);
+                    //重新写入消息到文件中
+                    byte[] bufferDest = BinaryTool.toByte(diskMsg);
+                    randomAccessFile.seek(message.getOffsetBeg());
+                    randomAccessFile.write(bufferDest);
+                }
+            }
+        }
+        Stat stat = readStat(msgQueue.getName());
+        if(stat.validMessageCount > 0) stat.validMessageCount -= 1;
+        writeStat(msgQueue.getName(), stat);
     }
 }
