@@ -3,7 +3,7 @@ package com.example.mq.common;
 import java.io.*;
 
 //工具类 存储的都是一些静态方法
-public class binaryTool {
+public class BinaryTool {
     //把一个对象序列化成数组
     public static byte[] toByte(Object object) throws IOException {
         //这个流对象相当于一个变长的字节数组
