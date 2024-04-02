@@ -204,4 +204,61 @@ public class MessageFileManager {
         }
         return messageList;
     }
+
+    //检查是否需要GC,约定当消息数量超过2000条且有效消息数量小于0.5时触发GC
+    public boolean checkGC(Stat stat){
+        if(stat.totalMessageCount >= 2000 && (double) stat.validMessageCount / (double)stat.totalMessageCount < 0.5){
+            return true;
+        }
+        return false;
+    }
+    public String getQueueDataNameNewPath(String queueName){
+        return getQueuePath(queueName) + "queue_data_new.txt";
+    }
+    //负责垃圾回收
+    //使用复制算法完成,创建一个新文件,将有效消息复制到新文件中,再对旧文件进行删除,将其改名为新文件
+    public void gc(MSGQueue msgQueue) throws MqException, IOException, ClassNotFoundException {
+        synchronized (msgQueue){
+            long gcBeg = System.currentTimeMillis();
+            //1.创建一个新文件
+            File queueDataNewFile = new File(getQueueDataNameNewPath(msgQueue.getName()));
+            if(queueDataNewFile.exists()){
+                throw new MqException("[MessageFileManager]-gc时发现该队列的queue_data_new已存在,queueName="+msgQueue.getName());
+            }
+            boolean ok = queueDataNewFile.createNewFile();
+            if(!ok){
+                throw new MqException("[MessageFileManager]-gc时创建该队列的queue_data_new失败,queueName="+msgQueue.getName());
+            }
+            //2.从旧的文件中取出有效消息
+            List<Message> messageList = loadAllMessageFromQueue(msgQueue.getName());
+            //3.把有效消息放到新的文件中
+            try(OutputStream outputStream = new FileOutputStream(queueDataNewFile)) {
+                try(DataOutputStream dataOutputStream = new DataOutputStream(outputStream)){
+                    for (Message message:messageList){
+                        byte[] buffer = BinaryTool.toByte(message);
+                        dataOutputStream.writeInt(buffer.length);
+                        dataOutputStream.write(buffer);
+                    }
+                }
+            }
+            //4.删除旧文件,对新文件改名
+            File queueDataOldFile = new File(getQueueDataPath(msgQueue.getName()));
+            ok = queueDataOldFile.delete();
+            if(!ok){
+                throw new MqException("[MessageFileManager]-gc时删除旧文件数据失败,queueName="+msgQueue.getName());
+            }
+            ok = queueDataNewFile.renameTo(queueDataOldFile);
+            if(!ok){
+                throw new MqException("[MessageFileManager]-gc时文件重命名失败,queueName="+msgQueue.getName());
+            }
+            //5.更新统计文件
+            Stat stat = readStat(msgQueue.getName());
+            stat.totalMessageCount = messageList.size();
+            stat.validMessageCount = messageList.size();
+            writeStat(msgQueue.getName(),stat);
+
+            long gcEnd = System.currentTimeMillis();
+            System.out.println("[MessageFileManager]-gc执行完毕,queuueName="+msgQueue.getName()+"共耗时"+(gcEnd-gcBeg) +"miles");
+        }
+    }
 }
