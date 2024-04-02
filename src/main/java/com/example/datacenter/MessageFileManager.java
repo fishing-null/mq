@@ -6,6 +6,8 @@ import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
 
 import java.io.*;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Scanner;
 
 public class MessageFileManager {
@@ -164,5 +166,42 @@ public class MessageFileManager {
         Stat stat = readStat(msgQueue.getName());
         if(stat.validMessageCount > 0) stat.validMessageCount -= 1;
         writeStat(msgQueue.getName(), stat);
+    }
+    //将文件中的消息加载到内存中
+    public List<Message> loadAllMessageFromQueue(String queueName) throws IOException, MqException, ClassNotFoundException {
+        List<Message> messageList = new LinkedList<>();
+        try(InputStream inputStream = new FileInputStream(getQueueDataPath(queueName))){
+            try(DataInputStream dataInputStream = new DataInputStream(inputStream)){
+                //使用这个变量记录当前文件光标
+                long currentOffset = 0;
+                while (true){
+                    //1.读取消息长度
+                    int messageSize = dataInputStream.readInt();
+                    //2.读取消息
+                    byte[] buffer = new byte[messageSize];
+                    int actualSize = dataInputStream.read(buffer);
+                    if(messageSize != actualSize){
+                        throw new MqException("[MessageFileManager]-文件格式错误!queueName="+queueName);
+                    }
+                    //3.反序列化为对象
+                    Message message = (Message) BinaryTool.fromBytes(buffer);
+                    //无效数据直接跳过
+                    if(message.getIsValid() != 0x1) {
+                        currentOffset += (messageSize + 4);
+                        continue;
+                    }
+                    //4.手动计算,填写对象的offsetBeg和offsetEnd
+                    messageList.add(message);
+                    message.setOffsetBeg(currentOffset + 4);
+                    message.setOffsetEnd(currentOffset + messageSize + 4);
+                    currentOffset += (messageSize + 4);
+                    messageList.add(message);
+                }
+            }catch (EOFException e){
+                //处理文件读到末尾时的异常
+                System.out.println("[MessageFileManager]-恢复Message数据完成");
+            }
+        }
+        return messageList;
     }
 }
