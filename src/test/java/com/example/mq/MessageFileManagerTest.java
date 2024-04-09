@@ -124,6 +124,7 @@ public class MessageFileManagerTest {
             messageFileManager.sendMessage(msgQueue,message);
             expectedMessageList.add(message);
         }
+        //删除三条消息
         messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(9));
         messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(8));
         messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(7));
@@ -142,6 +143,45 @@ public class MessageFileManagerTest {
             Assertions.assertEquals(0x1,curMessage.getIsValid());
             Assertions.assertEquals(0x1,message.getIsValid());
         }
+    }
+    @Test
+    public void testGC() throws IOException, MqException, ClassNotFoundException {
+        //添加100条消息,再删除一半消息,比较删除前后文件大小
+        MSGQueue msgQueue = createTestQueue();
+        List<Message> expectedMessageList = new LinkedList<>();
+        for (int i = 0; i < 100; i++) {
+            Message message = createTestMessage("testMessage" + i);
+            messageFileManager.sendMessage(msgQueue,message);
+            expectedMessageList.add(message);
+        }
+        File beforeGCFile = new File("./data/" + queueNameTest1 + "/queue_data.txt");
+        long beforeGCLength = beforeGCFile.length();
+        //对下标为偶数的消息进行删除
+        for (int i = 0; i < 100; i += 2) {
+            messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(i));
+        }
+        messageFileManager.gc(msgQueue);
+        //重新读取文件,验证文件和之前内容是否匹配
+        List<Message> actualMessageList = messageFileManager.loadAllMessageFromQueue(queueNameTest1);
+        Assertions.assertEquals(50,actualMessageList.size());
+        for (int i = 0; i < actualMessageList.size(); i++) {
+            Message message = expectedMessageList.get(2*i + 1);
+            Message curMessage = actualMessageList.get(i);
+            System.out.println("[" + i + "] actualMessage=" + curMessage);
+            System.out.println("[" + i + "] message=" + message);
+            Assertions.assertEquals(message.getMessageId(),curMessage.getMessageId());
+            Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
+            Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
+            Assertions.assertArrayEquals(message.getBody(),curMessage.getBody());
+            Assertions.assertEquals(0x1,curMessage.getIsValid());
+            Assertions.assertEquals(0x1,message.getIsValid());
+        }
+        File afterGCFile = new File("./data/" + queueNameTest1 + "/queue_data.txt");
+        long afterGCLength = afterGCFile.length();
+        System.out.println("before: "+ beforeGCLength);
+        System.out.println("after: "+ afterGCLength);
+        Assertions.assertTrue(beforeGCLength > afterGCLength);
+
     }
     private MSGQueue createTestQueue() {
         MSGQueue msgQueue = new MSGQueue();
