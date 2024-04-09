@@ -21,12 +21,12 @@ public class MessageFileManager {
 
     //获取消息文件路径 消息文件包含两部分 四字节定长表示消息长度 不定长长度表示消息体
     private String getQueueDataPath(String queueName){
-        return getQueuePath(queueName) + "message_data.txt";
+        return getQueuePath(queueName) + "/queue_data.txt";
     }
 
     //获取消息统计文件路径 统计消息包含两个词条 总消息和有效消息
     private String getQueueStatsPath(String queueName){
-        return getQueuePath(queueName) + "message_stats.txt";
+        return getQueuePath(queueName) + "/queue_stat.txt";
     }
     //更具队列名称,读取stats文件中数据
     private Stat readStat(String queueName){
@@ -64,17 +64,17 @@ public class MessageFileManager {
         //2.创建队列数据文件
         File queueDataFile = new File(getQueueDataPath(queueName));
         if(!queueDataFile.exists()){
-            boolean ok = queueDataFile.mkdirs();
+            boolean ok = queueDataFile.createNewFile();
             if(!ok){
-                throw new IOException("创建目录失败!queueDataFile="+queueDataFile.getAbsolutePath());
+                throw new IOException("创建文件失败!queueDataFile="+queueDataFile.getAbsolutePath());
             }
         }
         //3.创建队列统计文件
         File queueStatFile = new File(getQueueStatsPath(queueName));
         if(!queueStatFile.exists()){
-            boolean ok = queueStatFile.mkdirs();
+            boolean ok = queueStatFile.createNewFile();
             if(!ok){
-                throw new IOException("创建目录失败!queueStatFile="+queueStatFile.getAbsolutePath());
+                throw new IOException("创建文件失败!queueStatFile="+queueStatFile.getAbsolutePath());
             }
         }
         //给消息统计文件设计初始值 0 \t 0
@@ -86,13 +86,15 @@ public class MessageFileManager {
 
 
     //当队列被删,与之对应的消息也就没有作用了,删除消息目录
-    private void destroyQueueDir(String queueName) throws IOException {
-        File queueDirFile = new File(getQueuePath(queueName));
-        boolean ok1 = queueDirFile.delete();
+    public void destroyQueueDir(String queueName) throws IOException {
+        //注意删除顺序,先删除文件,在删除目录
+
         File messageStatFile = new File(getQueueStatsPath(queueName));
-        boolean ok2 = messageStatFile.delete();
+        boolean ok1 = messageStatFile.delete();
         File messageDataFile = new File(getQueueDataPath(queueName));
-        boolean ok3 = messageDataFile.delete();
+        boolean ok2 = messageDataFile.delete();
+        File queueDirFile = new File(getQueuePath(queueName));
+        boolean ok3 = queueDirFile.delete();
         if(!ok1 || !ok2 || !ok3){
             throw new IOException("删除目录和文件失败!queueDir=" + messageDataFile.getAbsolutePath());
         }
