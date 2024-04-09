@@ -100,9 +100,12 @@ public class MessageFileManagerTest {
         }
         List<Message> actualMessageList = messageFileManager.loadAllMessageFromQueue(queueNameTest1);
         Assertions.assertEquals(expectedMessageList.size(),actualMessageList.size());
+        //对比内容是否正确
         for (int i = 0; i < actualMessageList.size(); i++) {
             Message message = expectedMessageList.get(i);
             Message curMessage = actualMessageList.get(i);
+            System.out.println("[" + i + "] actualMessage=" + curMessage);
+            System.out.println("[" + i + "] message=" + message);
             Assertions.assertEquals(message.getMessageId(),curMessage.getMessageId());
             Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
             Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
@@ -110,10 +113,36 @@ public class MessageFileManagerTest {
             Assertions.assertEquals(0x1,curMessage.getIsValid());
             Assertions.assertEquals(0x1,message.getIsValid());
         }
-
-
     }
-
+    @Test
+    public void testDeleteMessage() throws IOException, ClassNotFoundException, MqException {
+        //向队列插入十条消息,再随便删除几条
+        MSGQueue msgQueue = createTestQueue();
+        List<Message> expectedMessageList = new LinkedList<>();
+        for (int i = 0; i < 10; i++) {
+            Message message = createTestMessage("testMessage" + i);
+            messageFileManager.sendMessage(msgQueue,message);
+            expectedMessageList.add(message);
+        }
+        messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(9));
+        messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(8));
+        messageFileManager.deleteMessage(msgQueue,expectedMessageList.get(7));
+        List<Message> actualMessageList = messageFileManager.loadAllMessageFromQueue(queueNameTest1);
+        Assertions.assertEquals(7,actualMessageList.size());
+        //对比内容是否正确
+        for (int i = 0; i < actualMessageList.size(); i++) {
+            Message message = expectedMessageList.get(i);
+            Message curMessage = actualMessageList.get(i);
+            System.out.println("[" + i + "] actualMessage=" + curMessage);
+            System.out.println("[" + i + "] message=" + message);
+            Assertions.assertEquals(message.getMessageId(),curMessage.getMessageId());
+            Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
+            Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
+            Assertions.assertArrayEquals(message.getBody(),curMessage.getBody());
+            Assertions.assertEquals(0x1,curMessage.getIsValid());
+            Assertions.assertEquals(0x1,message.getIsValid());
+        }
+    }
     private MSGQueue createTestQueue() {
         MSGQueue msgQueue = new MSGQueue();
         msgQueue.setDurable(true);

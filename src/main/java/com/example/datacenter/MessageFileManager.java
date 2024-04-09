@@ -148,7 +148,7 @@ public class MessageFileManager {
     //4.更新统计文件
     public void deleteMessage(MSGQueue msgQueue,Message message) throws IOException, ClassNotFoundException {
         synchronized (msgQueue){
-            try(RandomAccessFile randomAccessFile = new RandomAccessFile(msgQueue.getName(),"rw")){
+            try(RandomAccessFile randomAccessFile = new RandomAccessFile(getQueueDataPath(msgQueue.getName()),"rw")){
                 byte[] bufferSrc = new byte[(int) (message.getOffsetEnd() - message.getOffsetBeg())];
                 //改变读取下标
                 randomAccessFile.seek(message.getOffsetBeg());
