@@ -1,6 +1,7 @@
 package com.example.mq.mqserver.core;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.UUID;
 
 /*
@@ -33,20 +34,20 @@ public class Message implements Serializable {
         message.body = body;
         return message;
     }
-    public String getMessageId(BasicProperties basicProperties){
+    public String getMessageId(){
         return basicProperties.getMessageId();
     }
     public void  setMessageId(String messageId){
         basicProperties.setMessageId(messageId);
     }
-    public String getRoutingKey(BasicProperties basicProperties){
+    public String getRoutingKey(){
         return basicProperties.getRoutingKey();
     }
     public void setRoutingKey(String routingKey){
         basicProperties.setRoutingKey(routingKey);
     }
 
-    public int getDeliverMode(BasicProperties basicProperties){
+    public int getDeliverMode(){
         return basicProperties.getDeliverMode();
     }
 
@@ -91,5 +92,16 @@ public class Message implements Serializable {
 
     public void setIsValid(byte isValid) {
         this.isValid = isValid;
+    }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "basicProperties=" + basicProperties +
+                ", body=" + Arrays.toString(body) +
+                ", offsetBeg=" + offsetBeg +
+                ", offsetEnd=" + offsetEnd +
+                ", isValid=" + isValid +
+                '}';
     }
 }

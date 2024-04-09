@@ -112,7 +112,7 @@ public class MessageFileManager {
         return true;
     }
     //将消息投入到队列中
-    private void sendMessage(MSGQueue msgQueue, Message message) throws MqException, IOException {
+    public void sendMessage(MSGQueue msgQueue, Message message) throws MqException, IOException {
         //1.检查消息文件是否存在
         if(!checkFileExists(msgQueue.getName())){
             throw new MqException("[MessageFileManager]-队列消息与文件不存在 queueName"+msgQueue.getName());

@@ -36,4 +36,13 @@ public class BasicProperties implements Serializable {
     public void setDeliverMode(int deliverMode) {
         this.deliverMode = deliverMode;
     }
+
+    @Override
+    public String toString() {
+        return "BasicProperties{" +
+                "messageId='" + messageId + '\'' +
+                ", routingKey='" + routingKey + '\'' +
+                ", deliverMode=" + deliverMode +
+                '}';
+    }
 }

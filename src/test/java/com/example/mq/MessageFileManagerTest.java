@@ -1,15 +1,19 @@
 package com.example.mq;
 
 import com.example.datacenter.MessageFileManager;
+import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.MSGQueue;
+import com.example.mq.mqserver.core.Message;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 
 public class MessageFileManagerTest {
     private MessageFileManager messageFileManager = new MessageFileManager();
@@ -45,5 +49,52 @@ public class MessageFileManagerTest {
         Assertions.assertEquals(true,queueDataFile1.isFile());
         File queueStatFile2 = new File("./data/" + queueNameTest2 + "/queue_stat.txt");
         Assertions.assertEquals(true,queueDataFile1.isFile());
+    }
+    @Test
+    //测试readStat()&writeStat()
+    public void testReadWriteStat(){
+        MessageFileManager.Stat stat = new MessageFileManager.Stat();
+        stat.totalMessageCount = 100;
+        stat.validMessageCount = 50;
+        //通过反射调用MessageFileManager的readStat方法
+        ReflectionTestUtils.invokeMethod(messageFileManager,"writeStat",queueNameTest1,stat);
+        //通过反射调用MessageFileManager的writeStat方法
+        MessageFileManager.Stat newStat = ReflectionTestUtils.invokeMethod(messageFileManager,"readStat",queueNameTest1);
+        Assertions.assertEquals(100,newStat.totalMessageCount);
+        Assertions.assertEquals(50,newStat.validMessageCount);
+    }
+    @Test
+    public void testSendMessage() throws IOException, MqException, ClassNotFoundException {
+        //构造队列和消息用于测试
+        Message message = createTestMessage("testMessage");
+        MSGQueue msgQueue = createTestQueue();
+
+        //调用发送消息方法
+        messageFileManager.sendMessage(msgQueue,message);
+        //验证stat文件
+        MessageFileManager.Stat stat = ReflectionTestUtils.invokeMethod(messageFileManager,"readStat",queueNameTest1);
+        Assertions.assertEquals(1,stat.validMessageCount);
+        Assertions.assertEquals(1,stat.totalMessageCount);
+        //验证data文件
+        List<Message> messageList = messageFileManager.loadAllMessageFromQueue(queueNameTest1);
+        Assertions.assertEquals(1,messageList.size());
+        Message curMessage = messageList.get(0);
+        Assertions.assertEquals(message.getMessageId(),curMessage.getMessageId());
+        Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
+        Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
+        Assertions.assertArrayEquals(message.getBody(),curMessage.getBody());
+    }
+
+    private MSGQueue createTestQueue() {
+        MSGQueue msgQueue = new MSGQueue();
+        msgQueue.setDurable(true);
+        msgQueue.setName(queueNameTest1);
+        msgQueue.setExclusive(true);
+        return msgQueue;
+    }
+
+    private Message createTestMessage(String content) {
+        Message message = Message.createMessageWithId("testRoutingKey",null,content.getBytes());
+        return message;
     }
 }
