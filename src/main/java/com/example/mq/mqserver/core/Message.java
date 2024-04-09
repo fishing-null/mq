@@ -8,7 +8,7 @@ import java.util.UUID;
  * 消息
  */
 public class Message implements Serializable {
-    private BasicProperties basicProperties;
+    private BasicProperties basicProperties = new BasicProperties();
     private byte[] body;
     //写入文件时,消息起始位置距离文件头部的位偏移
     private transient long offsetBeg;
@@ -27,7 +27,7 @@ public class Message implements Serializable {
     public static Message createMessageWithId(String routingKey,BasicProperties basicProperties,byte[] body){
         Message message = new Message();
         if(basicProperties != null){
-            message.basicProperties = basicProperties;
+            message.setBasicProperties(basicProperties);
         }
         message.setMessageId("M-" + UUID.randomUUID());
         message.setRoutingKey(routingKey);

@@ -193,7 +193,6 @@ public class MessageFileManager {
                         continue;
                     }
                     //4.手动计算,填写对象的offsetBeg和offsetEnd
-                    messageList.add(message);
                     message.setOffsetBeg(currentOffset + 4);
                     message.setOffsetEnd(currentOffset + messageSize + 4);
                     currentOffset += (messageSize + 4);

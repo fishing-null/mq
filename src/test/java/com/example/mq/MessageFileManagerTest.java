@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MessageFileManagerTest {
@@ -83,6 +84,34 @@ public class MessageFileManagerTest {
         Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
         Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
         Assertions.assertArrayEquals(message.getBody(),curMessage.getBody());
+        System.out.println("message:" + curMessage);
+    }
+
+    @Test
+    //测试从队列冲加载数据
+    public void testLoadAllMessageFromQueue() throws IOException, MqException, ClassNotFoundException {
+        //向队列中插入100条数据
+        MSGQueue msgQueue = createTestQueue();
+        List<Message> expectedMessageList = new LinkedList<>();
+        for (int i = 0; i < 100; i++) {
+            Message message = createTestMessage("testMessage" + i);
+            messageFileManager.sendMessage(msgQueue,message);
+            expectedMessageList.add(message);
+        }
+        List<Message> actualMessageList = messageFileManager.loadAllMessageFromQueue(queueNameTest1);
+        Assertions.assertEquals(expectedMessageList.size(),actualMessageList.size());
+        for (int i = 0; i < actualMessageList.size(); i++) {
+            Message message = expectedMessageList.get(i);
+            Message curMessage = actualMessageList.get(i);
+            Assertions.assertEquals(message.getMessageId(),curMessage.getMessageId());
+            Assertions.assertEquals(message.getRoutingKey(),curMessage.getRoutingKey());
+            Assertions.assertEquals(message.getDeliverMode(),curMessage.getDeliverMode());
+            Assertions.assertArrayEquals(message.getBody(),curMessage.getBody());
+            Assertions.assertEquals(0x1,curMessage.getIsValid());
+            Assertions.assertEquals(0x1,message.getIsValid());
+        }
+
+
     }
 
     private MSGQueue createTestQueue() {
