@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Scanner;
 
 public class MessageFileManager {
+    public void init() {
+    }
+
     public static class Stat{
         public int totalMessageCount;
         public int validMessageCount;
@@ -207,7 +210,8 @@ public class MessageFileManager {
     }
 
     //检查是否需要GC,约定当消息数量超过2000条且有效消息数量小于0.5时触发GC
-    public boolean checkGC(Stat stat){
+    public boolean checkGC(String queueName){
+        Stat stat = readStat(queueName);
         if(stat.totalMessageCount >= 2000 && (double) stat.validMessageCount / (double)stat.totalMessageCount < 0.5){
             return true;
         }
