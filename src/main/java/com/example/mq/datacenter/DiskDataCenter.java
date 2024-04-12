@@ -43,7 +43,7 @@ public class DiskDataCenter {
     public void deleteBinding(Binding binding){
         dataBaseManager.deleteBinding(binding);
     }
-    public List<Binding> selectAllBindings(Binding binding){
+    public List<Binding> selectAllBindings(){
         return dataBaseManager.selectAllEBindings();
     }
     //封装message相关

@@ -4,10 +4,7 @@ import com.example.mq.common.MqException;
 import com.example.mq.datacenter.DataBaseManager;
 import com.example.mq.datacenter.DiskDataCenter;
 import com.example.mq.datacenter.MessageFileManager;
-import com.example.mq.mqserver.core.Exchange;
-import com.example.mq.mqserver.core.ExchangeType;
-import com.example.mq.mqserver.core.MSGQueue;
-import com.example.mq.mqserver.core.Message;
+import com.example.mq.mqserver.core.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,6 +102,28 @@ public class DiskDataCenterTests {
             Assertions.assertEquals(0x1,curMessage.getIsValid());
             Assertions.assertEquals(0x1,message.getIsValid());
         }
+    }
+    @Test
+    public void testBindingModule(){
+        List<Binding> bindingList = new LinkedList<>();
+        for (int i = 0; i < 20; i++) {
+            Binding binding = createTestBinding(i);
+            diskDataCenter.insertBinding(binding);
+        }
+        bindingList = diskDataCenter.selectAllBindings();
+        Assertions.assertEquals(20,bindingList.size());
+        diskDataCenter.deleteBinding(bindingList.get(0));
+        diskDataCenter.deleteBinding(bindingList.get(1));
+        bindingList = diskDataCenter.selectAllBindings();
+        Assertions.assertEquals(18,bindingList.size());
+    }
+
+    private Binding createTestBinding(int keyId) {
+        Binding binding = new Binding();
+        binding.setBindingKey("testBindingkey"+keyId);
+        binding.setExchangeName("testExchange"+keyId);
+        binding.setQueueName(testQueueName+keyId);
+        return binding;
     }
 
     private MSGQueue createTestQueue() {
