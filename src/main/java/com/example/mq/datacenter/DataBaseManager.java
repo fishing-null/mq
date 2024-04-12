@@ -1,4 +1,4 @@
-package com.example.datacenter;
+package com.example.mq.datacenter;
 
 import com.example.mq.MqApplication;
 import com.example.mq.mqserver.core.Binding;
@@ -54,7 +54,7 @@ public class DataBaseManager {
         }else {
             System.out.println("[DataBaseManager]-删除数据库文件失败!");
         }
-        File dataDir = new File("./data/meta.db");
+        File dataDir = new File("./data");
         dataDir.delete();
         if(ret){
             System.out.println("[DataBaseManager]-数据库目录删除成功!");

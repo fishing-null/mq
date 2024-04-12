@@ -1,4 +1,4 @@
-package com.example.datacenter;
+package com.example.mq.datacenter;
 
 import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.Binding;

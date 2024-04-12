@@ -1,6 +1,6 @@
 package com.example.mq;
 
-import com.example.datacenter.MessageFileManager;
+import com.example.mq.datacenter.MessageFileManager;
 import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
@@ -12,11 +12,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
 
-public class MessageFileManagerTest {
+public class MessageFileManagerTests {
     private MessageFileManager messageFileManager = new MessageFileManager();
     private final String queueNameTest1 = "testQueue1";
     private final String queueNameTest2 = "testQueue2";

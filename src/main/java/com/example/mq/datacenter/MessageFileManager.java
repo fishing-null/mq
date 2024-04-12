@@ -1,4 +1,4 @@
-package com.example.datacenter;
+package com.example.mq.datacenter;
 
 import com.example.mq.common.BinaryTool;
 import com.example.mq.common.MqException;

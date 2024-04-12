@@ -1,6 +1,6 @@
 package com.example.mq;
 
-import com.example.datacenter.DataBaseManager;
+import com.example.mq.datacenter.DataBaseManager;
 import com.example.mq.mqserver.core.Binding;
 import com.example.mq.mqserver.core.Exchange;
 import com.example.mq.mqserver.core.ExchangeType;
@@ -14,7 +14,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 
 import java.util.List;
-import java.util.Queue;
 
 
 @SpringBootTest
@@ -26,7 +25,7 @@ public class DataBaseManagerTests {
         MqApplication.context = SpringApplication.run(MqApplication.class);
         dataBaseManager.init();
     }
-    //每个测试方法调用后,都要执行该方法进行数据库清楚操作
+    //每个测试方法调用后,都要执行该方法进行数据库清除操作
     @AfterEach
     public void tearDown(){
         MqApplication.context.close();
@@ -41,11 +40,11 @@ public class DataBaseManagerTests {
         List<MSGQueue> msgQueueList = dataBaseManager.selectAllQueues();
         List<Binding> bindingList = dataBaseManager.selectAllEBindings();
 
-        Assertions.assertEquals(1,exchangeList);
+        Assertions.assertEquals(1,exchangeList.size());
         Assertions.assertEquals("",exchangeList.get(0).getName());
         Assertions.assertEquals(ExchangeType.DIRECT,exchangeList.get(0).getType());
-        Assertions.assertEquals(0,msgQueueList);
-        Assertions.assertEquals(0,bindingList);
+        Assertions.assertEquals(0,msgQueueList.size());
+        Assertions.assertEquals(0,bindingList.size());
     }
     private Exchange createTestExchange(String exchangeName){
         Exchange exchange = new Exchange();
