@@ -1,6 +1,6 @@
 package com.example.mq;
 
-import com.example.mq.datacenter.DataBaseManager;
+import com.example.mq.mqserver.datacenter.DataBaseManager;
 import com.example.mq.mqserver.core.Binding;
 import com.example.mq.mqserver.core.Exchange;
 import com.example.mq.mqserver.core.ExchangeType;

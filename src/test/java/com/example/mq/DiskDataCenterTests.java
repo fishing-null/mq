@@ -1,9 +1,9 @@
 package com.example.mq;
 
 import com.example.mq.common.MqException;
-import com.example.mq.datacenter.DataBaseManager;
-import com.example.mq.datacenter.DiskDataCenter;
-import com.example.mq.datacenter.MessageFileManager;
+import com.example.mq.mqserver.datacenter.DataBaseManager;
+import com.example.mq.mqserver.datacenter.DiskDataCenter;
+import com.example.mq.mqserver.datacenter.MessageFileManager;
 import com.example.mq.mqserver.core.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;

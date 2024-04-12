@@ -1,6 +1,6 @@
 package com.example.mq;
 
-import com.example.mq.datacenter.MessageFileManager;
+import com.example.mq.mqserver.datacenter.MessageFileManager;
 import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
