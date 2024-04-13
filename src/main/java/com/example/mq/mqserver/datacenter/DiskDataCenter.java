@@ -7,6 +7,7 @@ import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class DiskDataCenter {
@@ -56,7 +57,7 @@ public class DiskDataCenter {
             messageFileManager.gc(msgQueue);
         }
     }
-    public List<Message> loadAllMessagesFromQueue(String queueName) throws IOException, MqException, ClassNotFoundException {
+    public LinkedList<Message> loadAllMessagesFromQueue(String queueName) throws IOException, MqException, ClassNotFoundException {
         return messageFileManager.loadAllMessageFromQueue(queueName);
     }
 }

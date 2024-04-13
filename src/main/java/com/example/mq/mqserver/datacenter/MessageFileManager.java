@@ -173,8 +173,8 @@ public class MessageFileManager {
         writeStat(msgQueue.getName(), stat);
     }
     //将文件中的消息加载到内存中
-    public List<Message> loadAllMessageFromQueue(String queueName) throws IOException, MqException, ClassNotFoundException {
-        List<Message> messageList = new LinkedList<>();
+    public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws IOException, MqException, ClassNotFoundException {
+        LinkedList<Message> messageList = new LinkedList<>();
         try(InputStream inputStream = new FileInputStream(getQueueDataPath(queueName))){
             try(DataInputStream dataInputStream = new DataInputStream(inputStream)){
                 //使用这个变量记录当前文件光标

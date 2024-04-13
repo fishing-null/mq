@@ -6,8 +6,11 @@ import com.example.mq.mqserver.core.Exchange;
 import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MemoryDataCenter {
@@ -175,4 +178,41 @@ public class MemoryDataCenter {
         }
         return messageHashMap.get(messageId);
     }
+
+    //从硬盘恢复内存到数据
+    public void recovery(DiskDataCenter diskDataCenter) throws IOException, MqException, ClassNotFoundException {
+        //清除之前旧的数据
+        exchangeMap.clear();
+        queueMap.clear();
+        bindingsMap.clear();
+        messageMap.clear();
+        queueMessageMap.clear();
+        //1.恢复所有的交换机数据
+        List<Exchange> exchangeList = diskDataCenter.selectAllExchanges();
+        for (Exchange exchange:exchangeList) {
+            exchangeMap.put(exchange.getName(), exchange);
+        }
+        //2.恢复所有的队列数据
+        List<MSGQueue> queueList = diskDataCenter.selectAllMsgQueues();
+        for(MSGQueue queue:queueList){
+            queueMap.put(queue.getName(),queue);
+        }
+
+        //3.恢复所有的绑定数据
+        List<Binding> bindingList = diskDataCenter.selectAllBindings();
+        for(Binding binding:bindingList){
+            ConcurrentHashMap<String,Binding> bindingMap = bindingsMap.computeIfAbsent(binding.getExchangeName(),k -> new ConcurrentHashMap<>());
+            bindingMap.put(binding.getQueueName(), binding);
+        }
+
+        //4.恢复所有的消息数据
+        for(MSGQueue queue:queueList){
+            LinkedList<Message> messageList = diskDataCenter.loadAllMessagesFromQueue(queue.getName());
+            queueMessageMap.put(queue.getName(), messageList);
+            for(Message message:messageList){
+                messageMap.put(message.getMessageId(),message);
+            }
+        }
+    }
+
 }
