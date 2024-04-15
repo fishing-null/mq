@@ -6,9 +6,7 @@ import com.example.mq.mqserver.core.Exchange;
 import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.core.Message;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,17 +35,25 @@ public class MemoryDataCenter {
         throw new MqException("[MemoryDataCenter]交换机删除失败!exchangeName="+exchangeName);
     }
 
-    public void getExchange(String exchangeName){
-        exchangeMap.get(exchangeName);
-        System.out.println("[MemoryDataCenter]交换机删除成功!exchangeName="+exchangeName);
+    public Exchange getExchange(String exchangeName){
+        if(exchangeMap.get(exchangeName) != null){
+            System.out.println("[MemoryDataCenter]交换机获取成功!exchangeName="+exchangeName);
+            return exchangeMap.get(exchangeName);
+
+        }
+        return null;
     }
 
     public void insertMsgQueue(MSGQueue msgQueue){
         queueMap.put(msgQueue.getName(),msgQueue);
         System.out.println("[MemoryDataCenter]新队列添加成功!queueName="+msgQueue.getName());
     }
-    public void getMsgQueue(String queueName){
-        queueMap.get(queueName);
+    public MSGQueue getMsgQueue(String queueName){
+        if(queueMap.get(queueName) != null){
+            System.out.println("[MemoryDataCenter]新队列获取成功!queueName="+queueName);
+            return queueMap.get(queueName);
+        }
+        return null;
     }
     public void deleteMsgQueue(String queueName) throws MqException {
         if(queueMap.get(queueName) != null){
