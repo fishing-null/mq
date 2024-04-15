@@ -99,6 +99,28 @@ public class VirtualHost {
             return false;
         }
     }
+    public boolean msgQueueDelete(String queueName){
+        queueName = virtualHostName+queueName;
+        try{
+            //1.先找到该队列
+            MSGQueue toDelete = memoryDataCenter.getMsgQueue(queueName);
+            //2.判断队列存在
+            if(toDelete == null){
+                System.out.println("[VirtualHost]消息队列不存在,删除失败!msgQueueName="+queueName);
+            }
+            //3.硬盘删除队列
+            if(toDelete.isDurable()){
+                diskDataCenter.deleteMsgQueue(queueName);
+            }
+            //4.内存删除队列
+            memoryDataCenter.deleteMsgQueue(queueName);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost]消息队列删除失败!msgQueueName="+queueName);
+            e.printStackTrace();
+            return false;
+        }
+    }
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
     }
