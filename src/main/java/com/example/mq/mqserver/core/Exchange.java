@@ -93,4 +93,8 @@ public class Exchange {
             throw new RuntimeException(e);
         }
     }
+
+    public void setArguments(Map<String, Object> arguments) {
+        this.arguments = arguments;
+    }
 }
