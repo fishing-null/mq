@@ -52,6 +52,25 @@ public class VirtualHost {
              return false;
          }
     }
+    public boolean exchangeDelete(String exchangeName){
+        exchangeName = virtualHostName+exchangeName;
+        try{
+            Exchange toDelete = memoryDataCenter.getExchange(exchangeName);
+            if(toDelete == null){
+                throw new MqException("[VirtualHost]交换机不存在,删除失败!exchangeName="+exchangeName);
+            }
+            if(toDelete.isDurable()){
+                diskDataCenter.deleteExchange(exchangeName);
+            }
+            memoryDataCenter.deleteExchange(exchangeName);
+            System.out.println("[VirtualHost]交换机删除成功!exchangeName="+exchangeName);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost]交换机删除失败!exchangeName="+exchangeName);
+            e.printStackTrace();
+            return false;
+        }
+    }
 
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
