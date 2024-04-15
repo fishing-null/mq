@@ -3,6 +3,7 @@ package com.example.mq.mqserver;
 import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.Exchange;
 import com.example.mq.mqserver.core.ExchangeType;
+import com.example.mq.mqserver.core.MSGQueue;
 import com.example.mq.mqserver.datacenter.DiskDataCenter;
 import com.example.mq.mqserver.datacenter.MemoryDataCenter;
 
@@ -31,7 +32,7 @@ public class VirtualHost {
          exchangeName = virtualHostName+exchangeName;
          try {
              if(memoryDataCenter.getExchange(exchangeName) != null){
-                 System.out.println("[VirtualHost]-Exchange"+exchangeName+"已经存在!");
+                 System.out.println("[VirtualHost]交换机已存在,exhcangeName="+exchangeName);
                 return true;
              }
              Exchange exchange = new Exchange();
@@ -72,6 +73,32 @@ public class VirtualHost {
         }
     }
 
+    public boolean msgQueueDeclare(String queueName,boolean autoDelete,boolean durable,boolean exclusive,Map<String,Object> arguments){
+        queueName = virtualHostName+queueName;
+        try {
+            //1.查询队列是否存在,存在则直接返回true
+            if(memoryDataCenter.getExchange(queueName) != null){
+                System.out.println("[VirtualHost]消息队列已经存在!msgQueueName="+queueName);
+                return true;
+            }
+            //2.队列不存在,创建队列
+            MSGQueue msgQueue = new MSGQueue();
+            msgQueue.setName(queueName);
+            msgQueue.setAutoDelete(autoDelete);
+            msgQueue.setDurable(durable);
+            msgQueue.setExclusive(exclusive);
+            //3.是否持久化
+            if(durable){
+                diskDataCenter.insertMsgQueue(msgQueue);
+            }
+            memoryDataCenter.insertMsgQueue(msgQueue);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost]消息队列创建失败!msgQueueName="+queueName);
+            e.printStackTrace();
+            return false;
+        }
+    }
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
     }
