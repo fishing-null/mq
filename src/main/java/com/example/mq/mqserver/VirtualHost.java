@@ -17,6 +17,9 @@ public class VirtualHost {
     private MemoryDataCenter memoryDataCenter = new MemoryDataCenter();
     private DiskDataCenter diskDataCenter = new DiskDataCenter();
     private Router router = new Router();
+
+    private final Object exchangeLocker = new Object();
+    private final Object queueLocker = new Object();
     public VirtualHost(String name){
         this.virtualHostName = name;
         diskDataCenter.init();
@@ -30,21 +33,23 @@ public class VirtualHost {
     public boolean exchangeDeclare(String exchangeName, ExchangeType exchangeType, boolean durable, boolean autoDelete, Map<String,Object> arguments){
          exchangeName = virtualHostName+exchangeName;
          try {
-             if(memoryDataCenter.getExchange(exchangeName) != null){
-                 System.out.println("[VirtualHost]交换机已存在,exhcangeName="+exchangeName);
-                return true;
+             synchronized (exchangeLocker){
+                 if(memoryDataCenter.getExchange(exchangeName) != null){
+                     System.out.println("[VirtualHost]交换机已存在,exhcangeName="+exchangeName);
+                     return true;
+                 }
+                 Exchange exchange = new Exchange();
+                 exchange.setName(exchangeName);
+                 exchange.setType(exchangeType);
+                 exchange.setAutoDelete(autoDelete);
+                 exchange.setDurable(durable);
+                 exchange.setArguments(arguments);
+                 if(durable){
+                     diskDataCenter.insertExchange(exchange);
+                 }
+                 memoryDataCenter.insertExchange(exchange);
+                 System.out.println("[VirtualHost]交换机创建完成!exchangeName="+exchangeName);
              }
-             Exchange exchange = new Exchange();
-             exchange.setName(exchangeName);
-             exchange.setType(exchangeType);
-             exchange.setAutoDelete(autoDelete);
-             exchange.setDurable(durable);
-             exchange.setArguments(arguments);
-             if(durable){
-                 diskDataCenter.insertExchange(exchange);
-             }
-             memoryDataCenter.insertExchange(exchange);
-             System.out.println("[VirtualHost]交换机创建完成!exchangeName="+exchangeName);
              return true;
          }catch (Exception e){
              System.out.println("[VirtualHost]交换机创建失败!exchangeName="+exchangeName);
@@ -55,15 +60,17 @@ public class VirtualHost {
     public boolean exchangeDelete(String exchangeName){
         exchangeName = virtualHostName+exchangeName;
         try{
-            Exchange toDelete = memoryDataCenter.getExchange(exchangeName);
-            if(toDelete == null){
-                throw new MqException("[VirtualHost]交换机不存在,删除失败!exchangeName="+exchangeName);
-            }
-            if(toDelete.isDurable()){
-                diskDataCenter.deleteExchange(exchangeName);
-            }
-            memoryDataCenter.deleteExchange(exchangeName);
-            System.out.println("[VirtualHost]交换机删除成功!exchangeName="+exchangeName);
+           synchronized (exchangeLocker){
+               Exchange toDelete = memoryDataCenter.getExchange(exchangeName);
+               if(toDelete == null){
+                   throw new MqException("[VirtualHost]交换机不存在,删除失败!exchangeName="+exchangeName);
+               }
+               if(toDelete.isDurable()){
+                   diskDataCenter.deleteExchange(exchangeName);
+               }
+               memoryDataCenter.deleteExchange(exchangeName);
+               System.out.println("[VirtualHost]交换机删除成功!exchangeName="+exchangeName);
+           }
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]交换机删除失败!exchangeName="+exchangeName);
@@ -75,22 +82,24 @@ public class VirtualHost {
     public boolean msgQueueDeclare(String queueName,boolean autoDelete,boolean durable,boolean exclusive,Map<String,Object> arguments){
         queueName = virtualHostName+queueName;
         try {
-            //1.查询队列是否存在,存在则直接返回true
-            if(memoryDataCenter.getExchange(queueName) != null){
-                System.out.println("[VirtualHost]消息队列已经存在!msgQueueName="+queueName);
-                return true;
+            synchronized (queueLocker){
+                //1.查询队列是否存在,存在则直接返回true
+                if(memoryDataCenter.getExchange(queueName) != null){
+                    System.out.println("[VirtualHost]消息队列已经存在!msgQueueName="+queueName);
+                    return true;
+                }
+                //2.队列不存在,创建队列
+                MSGQueue msgQueue = new MSGQueue();
+                msgQueue.setName(queueName);
+                msgQueue.setAutoDelete(autoDelete);
+                msgQueue.setDurable(durable);
+                msgQueue.setExclusive(exclusive);
+                //3.是否持久化
+                if(durable){
+                    diskDataCenter.insertMsgQueue(msgQueue);
+                }
+                memoryDataCenter.insertMsgQueue(msgQueue);
             }
-            //2.队列不存在,创建队列
-            MSGQueue msgQueue = new MSGQueue();
-            msgQueue.setName(queueName);
-            msgQueue.setAutoDelete(autoDelete);
-            msgQueue.setDurable(durable);
-            msgQueue.setExclusive(exclusive);
-            //3.是否持久化
-            if(durable){
-                diskDataCenter.insertMsgQueue(msgQueue);
-            }
-            memoryDataCenter.insertMsgQueue(msgQueue);
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]消息队列创建失败!msgQueueName="+queueName);
@@ -101,18 +110,20 @@ public class VirtualHost {
     public boolean msgQueueDelete(String queueName){
         queueName = virtualHostName+queueName;
         try{
-            //1.先找到该队列
-            MSGQueue toDelete = memoryDataCenter.getMsgQueue(queueName);
-            //2.判断队列存在
-            if(toDelete == null){
-                System.out.println("[VirtualHost]消息队列不存在,删除失败!msgQueueName="+queueName);
+            synchronized (queueLocker){
+                //1.先找到该队列
+                MSGQueue toDelete = memoryDataCenter.getMsgQueue(queueName);
+                //2.判断队列存在
+                if(toDelete == null){
+                    System.out.println("[VirtualHost]消息队列不存在,删除失败!msgQueueName="+queueName);
+                }
+                //3.硬盘删除队列
+                if(toDelete.isDurable()){
+                    diskDataCenter.deleteMsgQueue(queueName);
+                }
+                //4.内存删除队列
+                memoryDataCenter.deleteMsgQueue(queueName);
             }
-            //3.硬盘删除队列
-            if(toDelete.isDurable()){
-                diskDataCenter.deleteMsgQueue(queueName);
-            }
-            //4.内存删除队列
-            memoryDataCenter.deleteMsgQueue(queueName);
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]消息队列删除失败!msgQueueName="+queueName);
@@ -124,33 +135,36 @@ public class VirtualHost {
         exchangeName = virtualHostName+exchangeName;
         queueName = virtualHostName+queueName;
         try {
-            //1.判断binding是否存在
-            Binding bindingIfExist = memoryDataCenter.getBinding(exchangeName,queueName);
-            if(bindingIfExist != null){
-                throw new MqException("[VirtualHost]binding已经存在!queueName="+queueName+"exchangeName="+exchangeName);
-                return false;
+            synchronized (exchangeLocker){
+                synchronized (queueLocker){
+                    //1.判断binding是否存在
+                    Binding bindingIfExist = memoryDataCenter.getBinding(exchangeName,queueName);
+                    if(bindingIfExist != null){
+                        throw new MqException("[VirtualHost]binding已经存在!queueName="+queueName+"exchangeName="+exchangeName);
+                    }
+                    //2.验证bindingKey是否合法
+                    if(!router.checkBindingKey(bindingKey)){
+                        throw new MqException("[VirtualHost]bindingKey非法!bindingKey="+bindingKey);
+                    }
+                    //3.创建binding对象
+                    Binding binding = new Binding();
+                    binding.setQueueName(queueName);
+                    binding.setExchangeName(exchangeName);
+                    binding.setBindingKey(bindingKey);
+                    //4.对应的交换机和队列是否存在
+                    Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+                    MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+                    if(msgQueue == null || exchange == null){
+                        throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
+                    }
+                    //5.是否持久化
+                    if(exchange.isDurable() && msgQueue.isDurable()){
+                        diskDataCenter.insertBinding(binding);
+                    }
+                    memoryDataCenter.insertBinding(binding);
+                    System.out.println("[VirtualHost]binding创建成功!exchangeName="+exchangeName+"queueName="+queueName);
+                }
             }
-            //2.验证bindingKey是否合法
-            if(!router.checkBindingKey(bindingKey)){
-                throw new MqException("[VirtualHost]bindingKey非法!bindingKey="+bindingKey);
-            }
-            //3.创建binding对象
-            Binding binding = new Binding();
-            binding.setQueueName(queueName);
-            binding.setExchangeName(exchangeName);
-            binding.setBindingKey(bindingKey);
-            //4.对应的交换机和队列是否存在
-            Exchange exchange = memoryDataCenter.getExchange(exchangeName);
-            MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
-            if(msgQueue == null || exchange == null){
-                throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
-            }
-            //5.是否持久化
-            if(exchange.isDurable() && msgQueue.isDurable()){
-                diskDataCenter.insertBinding(binding);
-            }
-            memoryDataCenter.insertBinding(binding);
-            System.out.println("[VirtualHost]binding创建成功!exchangeName="+exchangeName+"queueName="+queueName);
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]binding创建失败!exchangeName="+exchangeName+"queueName="+queueName);
@@ -162,20 +176,22 @@ public class VirtualHost {
         exchangeName = virtualHostName + exchangeName;
         queueName = virtualHostName + queueName;
         try {
-            Binding binding = memoryDataCenter.getBinding(exchangeName,queueName);
-            if(binding == null){
-                throw new MqException("[VirtualHost]binding删除失败!exchangeName="+exchangeName+"queueName="+queueName);
+            synchronized (exchangeLocker){
+                synchronized (queueLocker){
+                    Binding binding = memoryDataCenter.getBinding(exchangeName,queueName);
+                    if(binding == null){
+                        throw new MqException("[VirtualHost]binding删除失败!exchangeName="+exchangeName+"queueName="+queueName);
+                    }
+                    Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+                    MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+                    if(exchange == null || msgQueue == null){
+                        throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
+                    }
+                    diskDataCenter.deleteBinding(binding);
+                    memoryDataCenter.deleteBinding(binding);
+                    System.out.println("[VirtualHost]binding删除成功!");
+                }
             }
-            Exchange exchange = memoryDataCenter.getExchange(exchangeName);
-            MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
-            if(exchange == null || msgQueue == null){
-                throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
-            }
-            if(exchange.isDurable() && msgQueue.isDurable()){
-                diskDataCenter.deleteBinding(binding);
-            }
-            memoryDataCenter.deleteBinding(binding);
-            System.out.println("[VirtualHost]binding删除成功!");
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]binding删除失败!exchangeName="+exchangeName+"queueName="+queueName);
