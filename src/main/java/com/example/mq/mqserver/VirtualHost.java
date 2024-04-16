@@ -7,6 +7,7 @@ import com.example.mq.mqserver.datacenter.MemoryDataCenter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 虚拟主机,每个虚拟主机管理独自的交换机、队列、绑定、消息、各个虚拟主机间互不干扰
@@ -199,6 +200,62 @@ public class VirtualHost {
             return false;
         }
     }
+    //构建消息转发到对应的交换机中
+    public boolean basicPublish(String exchangeName,String routingKey,BasicProperties basicProperties,byte[] body){
+        try {
+            exchangeName = virtualHostName+exchangeName;
+            //1.验证routingKey是否合法
+            if(!router.checkRoutingKey(routingKey)){
+                throw new MqException("[VirtualHost]routingKey不合法!routingKey="+routingKey);
+            }
+            //2.验证交换机是否存在
+            Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+            if(exchange == null){
+                throw new MqException("[VirtualHost]交换机不存在!exchangeName="+exchangeName);
+            }
+            //3.判断交换机类型
+            if(exchange.getType() == ExchangeType.DIRECT){
+                //直接交换机,采用queueName当作routingKey
+                String queueName = virtualHostName + routingKey;
+                //构建队列
+                MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+                if(msgQueue == null){
+                    throw new MqException("[VirtualHost]队列不存在!queueName="+queueName);
+                }
+                //构建消息
+                Message message = Message.createMessageWithId(routingKey,basicProperties,body);
+                sendMessage(msgQueue,message);
+            }else {
+                //按照fanout和topic来转发
+                ConcurrentHashMap<String,Binding> bindingsMap = memoryDataCenter.getAllBindings(exchangeName);
+                for(Map.Entry<String,Binding> entry:bindingsMap.entrySet()){
+                    Binding binding = entry.getValue();
+                    MSGQueue queue = memoryDataCenter.getMsgQueue(binding.getQueueName());
+                    if(queue == null){
+                        System.out.println("[VirtualHost]队列不存在!queueName="+queue.getName());
+                        continue;
+                    }
+                    Message message = Message.createMessageWithId(routingKey,basicProperties,body);
+                    //判定消息能否转发给i队列
+                    if(!router.route(exchange.getType(),binding,message)){
+                        System.out.println("[VirtualHost]转发规则不匹配!routingKey="+routingKey);
+                        continue;
+                    }
+                    //转发消息给队列
+                    sendMessage(queue,message);
+                }
+            }
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private void sendMessage(MSGQueue msgQueue, Message message) {
+
+    }
+
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
     }
