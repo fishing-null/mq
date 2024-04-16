@@ -1,9 +1,7 @@
 package com.example.mq.mqserver;
 
 import com.example.mq.common.MqException;
-import com.example.mq.mqserver.core.Exchange;
-import com.example.mq.mqserver.core.ExchangeType;
-import com.example.mq.mqserver.core.MSGQueue;
+import com.example.mq.mqserver.core.*;
 import com.example.mq.mqserver.datacenter.DiskDataCenter;
 import com.example.mq.mqserver.datacenter.MemoryDataCenter;
 
@@ -16,8 +14,9 @@ import java.util.Map;
  */
 public class VirtualHost {
     private String virtualHostName;
-    private MemoryDataCenter memoryDataCenter;
-    private DiskDataCenter diskDataCenter;
+    private MemoryDataCenter memoryDataCenter = new MemoryDataCenter();
+    private DiskDataCenter diskDataCenter = new DiskDataCenter();
+    private Router router = new Router();
     public VirtualHost(String name){
         this.virtualHostName = name;
         diskDataCenter.init();
@@ -117,6 +116,69 @@ public class VirtualHost {
             return true;
         }catch (Exception e){
             System.out.println("[VirtualHost]消息队列删除失败!msgQueueName="+queueName);
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public boolean queueBind(String exchangeName,String queueName,String bindingKey){
+        exchangeName = virtualHostName+exchangeName;
+        queueName = virtualHostName+queueName;
+        try {
+            //1.判断binding是否存在
+            Binding bindingIfExist = memoryDataCenter.getBinding(exchangeName,queueName);
+            if(bindingIfExist != null){
+                throw new MqException("[VirtualHost]binding已经存在!queueName="+queueName+"exchangeName="+exchangeName);
+                return false;
+            }
+            //2.验证bindingKey是否合法
+            if(!router.checkBindingKey(bindingKey)){
+                throw new MqException("[VirtualHost]bindingKey非法!bindingKey="+bindingKey);
+            }
+            //3.创建binding对象
+            Binding binding = new Binding();
+            binding.setQueueName(queueName);
+            binding.setExchangeName(exchangeName);
+            binding.setBindingKey(bindingKey);
+            //4.对应的交换机和队列是否存在
+            Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+            MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+            if(msgQueue == null || exchange == null){
+                throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
+            }
+            //5.是否持久化
+            if(exchange.isDurable() && msgQueue.isDurable()){
+                diskDataCenter.insertBinding(binding);
+            }
+            memoryDataCenter.insertBinding(binding);
+            System.out.println("[VirtualHost]binding创建成功!exchangeName="+exchangeName+"queueName="+queueName);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost]binding创建失败!exchangeName="+exchangeName+"queueName="+queueName);
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public boolean queueUnbind(String exchangeName,String queueName){
+        exchangeName = virtualHostName + exchangeName;
+        queueName = virtualHostName + queueName;
+        try {
+            Binding binding = memoryDataCenter.getBinding(exchangeName,queueName);
+            if(binding == null){
+                throw new MqException("[VirtualHost]binding删除失败!exchangeName="+exchangeName+"queueName="+queueName);
+            }
+            Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+            MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+            if(exchange == null || msgQueue == null){
+                throw new MqException("[VirtualHost]exchange不存在或msgQueue不存在!exchangeName="+exchangeName+"queueName="+queueName);
+            }
+            if(exchange.isDurable() && msgQueue.isDurable()){
+                diskDataCenter.deleteBinding(binding);
+            }
+            memoryDataCenter.deleteBinding(binding);
+            System.out.println("[VirtualHost]binding删除成功!");
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost]binding删除失败!exchangeName="+exchangeName+"queueName="+queueName);
             e.printStackTrace();
             return false;
         }
