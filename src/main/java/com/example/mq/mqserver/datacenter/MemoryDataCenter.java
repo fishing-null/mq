@@ -131,7 +131,10 @@ public class MemoryDataCenter {
         insertMessage(message);
         System.out.println("[MemoryDataCenter]消息被添加到队列中!messageId="+message.getMessageId());
     }
-
+    public void addMessage(Message message){
+        messageMap.put(message.getMessageId(), message);
+        System.out.println("[MemoryDataCenter]消息添加成功!messageId="+message.getMessageId());
+    }
     //从指定队列取出消息
     public Message pollMessage(String queueName){
         //根据队列名,查找对应队列的消息链表

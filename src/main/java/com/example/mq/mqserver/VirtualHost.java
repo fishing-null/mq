@@ -252,7 +252,16 @@ public class VirtualHost {
         }
     }
 
-    private void sendMessage(MSGQueue msgQueue, Message message) {
+    private void sendMessage(MSGQueue msgQueue, Message message) throws IOException, MqException {
+        int deliverMode = message.getDeliverMode();
+        //deliverMode-1不持久化,deliverMode-2持久化
+        if(deliverMode == 2){
+            diskDataCenter.sendMessage(msgQueue,message);
+        }
+        //写入内存
+        memoryDataCenter.sendMessage(msgQueue,message);
+
+        //TODO 补充通知消费者可以消费消息了
 
     }
 
