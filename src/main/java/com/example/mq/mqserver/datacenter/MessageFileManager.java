@@ -118,7 +118,7 @@ public class MessageFileManager {
     public void sendMessage(MSGQueue msgQueue, Message message) throws MqException, IOException {
         //1.检查消息文件是否存在
         if(!checkFileExists(msgQueue.getName())){
-            throw new MqException("[MessageFileManager]-队列消息与文件不存在 queueName"+msgQueue.getName());
+            throw new MqException("[MessageFileManager]-队列消息与文件不存在 queueName="+msgQueue.getName());
         }
         //2.把message对象转换成二进制数据
         byte[] messageBinary = BinaryTool.toByte(message);

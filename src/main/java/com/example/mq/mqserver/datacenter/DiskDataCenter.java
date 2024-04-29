@@ -29,12 +29,12 @@ public class DiskDataCenter {
     }
     //封装queue相关
     public void insertMsgQueue(MSGQueue msgQueue) throws IOException {
-        messageFileManager.createQueueDir(msgQueue.getName());
         dataBaseManager.insertQueue(msgQueue);
+        messageFileManager.createQueueDir(msgQueue.getName());
     }
     public void deleteMsgQueue(String queueName) throws IOException {
-        messageFileManager.destroyQueueDir(queueName);
         dataBaseManager.deleteQueue(queueName);
+        messageFileManager.destroyQueueDir(queueName);
     }
     public List<MSGQueue> selectAllMsgQueues(){
         return dataBaseManager.selectAllQueues();
