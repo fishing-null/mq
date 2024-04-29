@@ -1,11 +1,15 @@
 package com.example.mq.mqserver.core;
 
+import com.example.mq.common.ConsumerEnv;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * 存储消息
@@ -27,8 +31,28 @@ public class MSGQueue {
      *是否独占队列,true-独占队列,false-不独占队列
      */
     private boolean exclusive;
-
+    //当前队列有哪些消费者订阅了
+    private List<ConsumerEnv> consumerEnvList  = new ArrayList<>();
+    //记录当前取到第几个消费者
+    private AtomicInteger consumerSeq = new AtomicInteger(0);
     private Map<String,Object> arguments;
+
+    //添加一个新的订阅者
+    public void addConsumerEnv(ConsumerEnv consumerEnv){
+        synchronized (this){
+            consumerEnvList.add(consumerEnv);
+        }
+    }
+
+    //按照轮询的方式选择一个订阅者消费消息
+    public ConsumerEnv ChoseConsumer(){
+        if(consumerEnvList.size() == 0){
+            //该队列没有消费者订阅
+            return null;
+        }
+        int index = consumerSeq.get() % consumerEnvList.size();
+        return consumerEnvList.get(index);
+    }
     public String getArguments() {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
