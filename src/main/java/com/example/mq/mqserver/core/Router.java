@@ -18,7 +18,7 @@ public class Router {
             if(ch >= '0' && ch <= '9'){
                 continue;
             }
-            if(ch == '_' || ch == '.'){
+            if(ch == '_' || ch == '.' || ch == '#' || ch == '*'){
                 continue;
             }
             return false;
@@ -32,7 +32,7 @@ public class Router {
                 return false;
             }
         }
-        //认为约定一些bindingKey规则
+        //人为约定一些bindingKey规则
         //aaa.*.*.bbb 允许
         //aaa.#.#.bbb 不允许
         //aaa.#.*.bbb 不允许
@@ -92,9 +92,55 @@ public class Router {
             throw new Exception("[Router]交换机类型非法!ExchangeType="+exchangeType);
         }
     }
-
+    //测试用例        routingKey         bindingKey         result
+    //               aaa.bbb.*          aaa.bbb            false
+    //               aaa.#              aaa                true
     private boolean routingTopic(Binding binding, Message message) {
         //TODO
-        return true;
+        String[] bindingToken = binding.getBindingKey().split("//.");
+        String[] routingToken = message.getRoutingKey().split("//.");
+        int bindingIndex = 0,routingIndex = 0;
+        while (bindingIndex < bindingToken.length && routingIndex < routingToken.length){
+            //bindingKey为*,双方下标都往前移动一个单位
+            if(bindingToken[bindingIndex].equals("*")){
+                bindingIndex++;
+                routingIndex++;
+
+            }else if(bindingToken[bindingIndex].equals("#")){
+                //bindingKey为#,若bindingKey后面没有内容则直接返回true
+                bindingIndex++;
+                if(bindingIndex == bindingToken.length) {
+                    return true;
+                }
+                //bindingKey后面有内容,从routingKey中找对应的匹配
+                routingIndex = findNextMatch(routingToken,routingIndex,bindingToken[bindingIndex]);
+                if(routingIndex == -1){
+                    return false;
+                }
+                bindingIndex++;
+                routingIndex++;
+            }else {
+                //普通字符串,要求bindingKey内容和routingKey内容完全一致
+                if(bindingToken[bindingIndex].equals(routingToken[routingIndex])){
+                    bindingIndex++;
+                    routingIndex++;
+                }else {
+                    return false;
+                }
+            }
+        }
+        if(bindingIndex == bindingToken.length && routingIndex == routingToken.length){
+            return true;
+        }
+        return false;
+    }
+
+    private int findNextMatch(String[] routingToken, int routingIndex, String bindingChar) {
+        for (int i = routingIndex; i < routingToken.length; i++) {
+            if(routingToken[i].equals(bindingChar)){
+                return i;
+            }
+        }
+        return -1;
     }
 }
