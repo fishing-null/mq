@@ -1,5 +1,7 @@
 package com.example.mq.mqserver.core;
 
+import com.example.mq.common.Consumer;
+
 public class Router {
     /*
      bindingKey合法性检验
@@ -132,6 +134,14 @@ public class Router {
             return true;
         }
         return false;
+    }
+    //订阅消息
+    //添加一个队列的订阅者,当队列收到消息之后,就要把消息推送到消息的订阅者
+    //consumerTag:订阅者的身份标识
+    //autoAck:消息被消费完成后,应答的方式,为true自动应答,为false手动应答
+    //consumer:回调函数,此处类型设定成函数式接口,这样后续调用basicConsume的时候传入consumer可以以lambda表达式的形式传入
+    public boolean basicConsume(String consumerTag, String queueName, boolean autoAck, Consumer consumer){
+        return true;
     }
 
     private int findNextMatch(String[] routingToken, int routingIndex, String bindingChar) {
