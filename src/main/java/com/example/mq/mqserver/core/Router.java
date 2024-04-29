@@ -97,8 +97,8 @@ public class Router {
     //               aaa.#              aaa                true
     private boolean routingTopic(Binding binding, Message message) {
         //TODO
-        String[] bindingToken = binding.getBindingKey().split("//.");
-        String[] routingToken = message.getRoutingKey().split("//.");
+        String[] bindingToken = binding.getBindingKey().split("\\.");
+        String[] routingToken = message.getRoutingKey().split("\\.");
         int bindingIndex = 0,routingIndex = 0;
         while (bindingIndex < bindingToken.length && routingIndex < routingToken.length){
             //bindingKey为*,双方下标都往前移动一个单位
@@ -121,12 +121,11 @@ public class Router {
                 routingIndex++;
             }else {
                 //普通字符串,要求bindingKey内容和routingKey内容完全一致
-                if(bindingToken[bindingIndex].equals(routingToken[routingIndex])){
-                    bindingIndex++;
-                    routingIndex++;
-                }else {
+                if(!bindingToken[bindingIndex].equals(routingToken[routingIndex])){
                     return false;
                 }
+                bindingIndex++;
+                routingIndex++;
             }
         }
         if(bindingIndex == bindingToken.length && routingIndex == routingToken.length){
