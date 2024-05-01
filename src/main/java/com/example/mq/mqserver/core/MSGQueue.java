@@ -39,9 +39,7 @@ public class MSGQueue {
 
     //添加一个新的订阅者
     public void addConsumerEnv(ConsumerEnv consumerEnv){
-        synchronized (this){
-            consumerEnvList.add(consumerEnv);
-        }
+        consumerEnvList.add(consumerEnv);
     }
 
     //按照轮询的方式选择一个订阅者消费消息

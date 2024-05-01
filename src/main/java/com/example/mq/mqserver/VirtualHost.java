@@ -1,5 +1,6 @@
 package com.example.mq.mqserver;
 
+import com.example.mq.common.Consumer;
 import com.example.mq.common.MqException;
 import com.example.mq.mqserver.core.*;
 import com.example.mq.mqserver.datacenter.DiskDataCenter;
@@ -21,6 +22,8 @@ public class VirtualHost {
 
     private final Object exchangeLocker = new Object();
     private final Object queueLocker = new Object();
+
+    private ConsumerManager consumerManager = new ConsumerManager(this);
     public VirtualHost(String name){
         this.virtualHostName = name;
         diskDataCenter.init();
@@ -252,7 +255,7 @@ public class VirtualHost {
         }
     }
 
-    private void sendMessage(MSGQueue msgQueue, Message message) throws IOException, MqException {
+    private void sendMessage(MSGQueue msgQueue, Message message) throws IOException, MqException, InterruptedException {
         int deliverMode = message.getDeliverMode();
         //deliverMode-1不持久化,deliverMode-2持久化
         if(deliverMode == 2){
@@ -261,10 +264,30 @@ public class VirtualHost {
         //写入内存
         memoryDataCenter.sendMessage(msgQueue,message);
 
-        //TODO 补充通知消费者可以消费消息了
-
+        //补充通知消费者可以消费消息了
+        consumerManager.notifyConsume(msgQueue.getName());
     }
 
+    //订阅消息
+    //添加一个队列的订阅者,当队列收到消息之后,就把消息推送给队列的订阅者
+    //consumerTag订阅者身份标识
+    //queueName订阅者要订阅的队列名
+    //autoAck是否自动应答 true自动应答 false手动应答
+    //consumer:回调函数
+    public boolean basicConsume(String consumerTag, String queueName, boolean autoAck, Consumer consumer){
+        queueName = virtualHostName+queueName;
+        try{
+            consumerManager.addConsumer(consumerTag,queueName,autoAck,consumer);
+            System.out.println("[VirtualHost] basicConsume成功!queueName= "+queueName);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost] basicConsume失败!queueName= "+queueName);
+            e.printStackTrace();
+            return false;
+        }
+
+
+    }
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
     }
