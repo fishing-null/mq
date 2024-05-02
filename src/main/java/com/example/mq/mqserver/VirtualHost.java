@@ -288,6 +288,30 @@ public class VirtualHost {
 
 
     }
+
+    public boolean basicAck(String queueName,String messageId){
+        queueName = virtualHostName + queueName;
+        try {
+            Message message = memoryDataCenter.getMessage(messageId);
+            MSGQueue msgQueue = memoryDataCenter.getMsgQueue(queueName);
+            if(message == null){
+                throw new MqException("[VirtualHost] 要确认的消息不存在,messageId= "+messageId);
+            }
+            if(msgQueue == null){
+                throw new MqException("[VirtualHost] 要确认的队列不存在,messageId= "+queueName);
+            }
+            if(message.getDeliverMode() == 2){
+                diskDataCenter.deleteMessage(msgQueue,message);
+            }
+            memoryDataCenter.deleteMessage(messageId);
+            memoryDataCenter.deleteMessageWaitAck(queueName,messageId);
+            System.out.println("[VirtualHost] basicAck 成功!消息确认成功!queueName= "+queueName+",messageId= "+messageId);
+            return true;
+        }catch (Exception e){
+            System.out.println("[VirtualHost] basicAck 失败!消息确认失败!queueName= "+queueName+",messageId= "+messageId);
+            return false;
+        }
+    }
     public MemoryDataCenter getMemoryDataCenter() {
         return memoryDataCenter;
     }

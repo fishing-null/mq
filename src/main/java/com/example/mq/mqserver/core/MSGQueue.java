@@ -43,7 +43,7 @@ public class MSGQueue {
     }
 
     //按照轮询的方式选择一个订阅者消费消息
-    public ConsumerEnv ChoseConsumer(){
+    public ConsumerEnv chooseConsumer(){
         if(consumerEnvList.size() == 0){
             //该队列没有消费者订阅
             return null;
