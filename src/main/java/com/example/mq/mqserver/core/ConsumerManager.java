@@ -64,7 +64,6 @@ public class ConsumerManager {
             for (int i = 0; i < n; i++) {
                 //调用一次就消费一条消息
                 consumeMessage(msgQueue);
-
             }
         }
     }
