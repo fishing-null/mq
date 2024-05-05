@@ -151,7 +151,7 @@ public class VirtualHostTest {
         Assertions.assertTrue(ok);
     }
     @Test
-    public void basicConsumenFanout() throws InterruptedException {
+    public void basicConsumeFanout() throws InterruptedException {
         boolean ok = testVirtualHost.exchangeDeclare("testExchange", ExchangeType.FANOUT,false,
                 false,null);
         Assertions.assertTrue(ok);
@@ -186,5 +186,55 @@ public class VirtualHostTest {
         });
         Assertions.assertTrue(ok);
         Thread.sleep(500);
+    }
+    @Test
+    public void testBasicConsumeTopic() throws InterruptedException {
+        boolean ok = testVirtualHost.msgQueueDeclare("testQueue",true,true,true
+                ,null);
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.exchangeDeclare("testExchange", ExchangeType.TOPIC,true,
+                false,null);
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.queueBind("testExchange","testQueue","aaa.*.bbb");
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.basicPublish("testExchange","aaa.1.bbb",null,"hello".getBytes());
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.basicConsume("testConsumer", "testQueue", true, new Consumer() {
+            @Override
+            public void handlerDelivery(String consumerTag, BasicProperties basicProperties, byte[] body) {
+                System.out.println("consumerTag= "+consumerTag);
+                System.out.println("messageId= "+basicProperties.getMessageId());
+                Assertions.assertArrayEquals("hello".getBytes(),body);
+            }
+        });
+        Assertions.assertTrue(ok);
+        Thread.sleep(500);
+    }
+    @Test
+    public void testBasicAck() throws InterruptedException {
+        //先订阅队列后发送消息
+        boolean ok = testVirtualHost.msgQueueDeclare("testQueue",true,true,true
+                ,null);
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.exchangeDeclare("testExchange", ExchangeType.DIRECT,true,
+                false,null);
+        Assertions.assertTrue(ok);
+        ok = testVirtualHost.basicConsume("testConsumerTag", "testQueue", false, new Consumer() {
+            @Override
+            public void handlerDelivery(String consumerTag, BasicProperties basicProperties, byte[] body) {
+                System.out.println("messageId= "+basicProperties.getMessageId());
+                System.out.println("body="+new String(body,0,body.length));
+                Assertions.assertEquals("testQueue",basicProperties.getRoutingKey());
+                Assertions.assertEquals("1",basicProperties.getDeliverMode());
+                Assertions.assertArrayEquals("hello".getBytes(),body);
+                boolean ok = testVirtualHost.basicAck("testQueue",basicProperties.getMessageId());
+                Assertions.assertTrue(ok);
+            }
+        });
+        Assertions.assertTrue(ok);
+        Thread.sleep(500);
+        //发送消息
+        ok = testVirtualHost.basicPublish("testExchange","testQueue",null,"hello".getBytes());
+        Assertions.assertTrue(ok);
     }
 }

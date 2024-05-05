@@ -28,7 +28,7 @@ public class Router {
         //检验是否符合规则*和#只能作为单个的字符出现
         //例如aaa.*.bbb || aaa.#.bbb
         //像aaa.a*.bbb是不被允许的
-        String[] words = bindingKey.split("//.");
+        String[] words = bindingKey.split("\\.");
         for(String word:words){
             if(word.length() > 1 && (word.contains("#") || word.contains("*"))){
                 return false;
