@@ -1,7 +1,6 @@
 package com.example.mq.mqserver;
 
-import com.example.mq.common.Request;
-import com.example.mq.common.Response;
+import com.example.mq.common.*;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -16,7 +15,7 @@ public class BrokerServer {
     //一台服务器上只有一个virtualHost
     private VirtualHost virtualHost = new VirtualHost("default");
     //记录当前所有会话,key为channelId,value为对应的socket对象
-    private ConcurrentHashMap<String, Socket> session = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Socket> sessions = new ConcurrentHashMap<>();
     //引入一个线程池,处理多个客户端的请求
     private ExecutorService executorService = null;
     //通过runnable控制服务器运行
@@ -84,8 +83,28 @@ public class BrokerServer {
         dataOutputStream.flush();
     }
 
-    private Response process(Request request, Socket clientSocket) {
-        //TODO
+    private Response process(Request request, Socket clientSocket) throws IOException, ClassNotFoundException {
+        //1.把request中的payload做一个初步的解析
+        BasicArguments basicArguments = (BasicArguments) BinaryTool.fromBytes(request.getPayload());
+        System.out.println("[Request] rid= "+basicArguments.getRid()+",channelId= "+basicArguments.getChannelId()+",type= " +
+                ""+request.getType()+",length= "+request.getLength());
+        //2.根据type的值进一步区分请求要干什么
+        boolean ok = true;
+        if(request.getType() == 0x1){
+            //创建channel
+            sessions.put(basicArguments.getChannelId(), clientSocket);
+            System.out.println("[BrokerServer]创建Channel完成!channelId= "+basicArguments.getChannelId());
+        }else if(request.getType() == 0x2){
+            //销毁channel
+            sessions.remove(basicArguments.getChannelId());
+            System.out.println("[BrokerServer]销毁Channel完成!channelId= "+basicArguments.getChannelId());
+        }else if(request.getType() == 0x3){
+            //创建交换机
+            ExchangeDeclareArguments exchangeDeclareArguments = (ExchangeDeclareArguments) basicArguments;
+            ok = virtualHost.exchangeDeclare(exchangeDeclareArguments.getExchangeName(),exchangeDeclareArguments.getExchangeType(),
+                    exchangeDeclareArguments.isDurable(),exchangeDeclareArguments.isAutoDelete(),exchangeDeclareArguments.getArguments());
+            System.out.println("[BrokerServer]创建交换机完成!exchangeName= "+exchangeDeclareArguments.getExchangeName());
+        }
         return null;
     }
 
