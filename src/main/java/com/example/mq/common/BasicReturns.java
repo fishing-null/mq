@@ -11,6 +11,9 @@ public class BasicReturns implements Serializable {
     //这次通信使用的channel标识
     protected String channelId;
 
+    //表示远程调用方法的返回值
+    protected boolean ok;
+
     public boolean isOk() {
         return ok;
     }
@@ -19,8 +22,6 @@ public class BasicReturns implements Serializable {
         this.ok = ok;
     }
 
-    //表示远程调用方法的返回值
-    protected boolean ok;
     public String getRid() {
         return rid;
     }
