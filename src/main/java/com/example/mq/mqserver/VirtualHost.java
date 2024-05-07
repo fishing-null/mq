@@ -239,7 +239,7 @@ public class VirtualHost {
                         continue;
                     }
                     Message message = Message.createMessageWithId(routingKey,basicProperties,body);
-                    //判定消息能否转发给i队列
+                    //判定消息能否转发给队列
                     if(!router.route(exchange.getType(),binding,message)){
                         System.out.println("[VirtualHost]转发规则不匹配!routingKey="+routingKey);
                         continue;

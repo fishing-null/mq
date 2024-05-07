@@ -1,6 +1,7 @@
 package com.example.mq.mqserver;
 
 import com.example.mq.common.*;
+import com.example.mq.mqserver.core.BasicProperties;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -30,7 +31,12 @@ public class BrokerServer {
         while (runnable){
             Socket clientSocket = serverSocket.accept();
             executorService.submit(()->{
-                processConnection(clientSocket);
+                try {
+                    processConnection(clientSocket);
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                    System.out.println("[BrokerServer]启动失败！类型转换错误!");
+                }
             });
         }
     }
@@ -42,7 +48,7 @@ public class BrokerServer {
         serverSocket.close();
     }
     //通过这个方法处理一个客户端的连接
-    private void processConnection(Socket clientSocket) {
+    private void processConnection(Socket clientSocket) throws ClassNotFoundException {
         try(InputStream inputStream = clientSocket.getInputStream();
             OutputStream outputStream = clientSocket.getOutputStream()){
             try(DataInputStream dataInputStream = new DataInputStream(inputStream);
@@ -58,7 +64,7 @@ public class BrokerServer {
             }
         }catch (EOFException | SocketException e){
             System.out.println("[BrokerServer] connection 关闭!客户端地址:"+clientSocket.getInetAddress().toString()+":"+clientSocket.getPort());
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException | MqException e ) {
             System.out.println("[BrokerServer]connection出现异常!");
             e.printStackTrace();
         }finally {
@@ -83,7 +89,7 @@ public class BrokerServer {
         dataOutputStream.flush();
     }
 
-    private Response process(Request request, Socket clientSocket) throws IOException, ClassNotFoundException {
+    private Response process(Request request, Socket clientSocket) throws IOException, ClassNotFoundException, MqException {
         //1.把request中的payload做一个初步的解析
         BasicArguments basicArguments = (BasicArguments) BinaryTool.fromBytes(request.getPayload());
         System.out.println("[Request] rid= "+basicArguments.getRid()+",channelId= "+basicArguments.getChannelId()+",type= " +
@@ -104,8 +110,87 @@ public class BrokerServer {
             ok = virtualHost.exchangeDeclare(exchangeDeclareArguments.getExchangeName(),exchangeDeclareArguments.getExchangeType(),
                     exchangeDeclareArguments.isDurable(),exchangeDeclareArguments.isAutoDelete(),exchangeDeclareArguments.getArguments());
             System.out.println("[BrokerServer]创建交换机完成!exchangeName= "+exchangeDeclareArguments.getExchangeName());
+        }else if(request.getType() == 0x4){
+            //删除交换机
+            ExchangeDeleteArguments exchangeDeleteArguments = (ExchangeDeleteArguments) basicArguments;
+            ok = virtualHost.exchangeDelete(exchangeDeleteArguments.getExchangeName());
+            System.out.println("[BrokerServer]删除交换机完成!exchangeName= "+exchangeDeleteArguments.getExchangeName());
+        }else if(request.getType() == 0x5){
+            //创建消息队列
+            MsgQueueDeclareArguments msgQueueDeclareArguments = (MsgQueueDeclareArguments) basicArguments;
+            ok = virtualHost.msgQueueDeclare(msgQueueDeclareArguments.getQueueName(), msgQueueDeclareArguments.isAutoDelete(), msgQueueDeclareArguments.isDurable(),
+                    msgQueueDeclareArguments.isExclusive(), msgQueueDeclareArguments.getArguments());
+            System.out.println("[BrokerServer]创建消息队列完成!queueName= "+msgQueueDeclareArguments.getQueueName());
+        }else if(request.getType() == 0x6){
+            //删除消息队列
+            MsgQueueDeleteArguments msgQueueDeleteArguments = (MsgQueueDeleteArguments) basicArguments;
+            ok = virtualHost.msgQueueDelete(msgQueueDeleteArguments.getQueueName());
+            System.out.println("[BrokerServer]删除消息队列完成!queueName= "+msgQueueDeleteArguments.getQueueName());
+        }else if(request.getType() == 0x7){
+            //创建binding
+            QueueBindArguments queueBindArguments = (QueueBindArguments) basicArguments;
+            ok = virtualHost.queueBind(queueBindArguments.getExchangeName(), queueBindArguments.getQueueName(), queueBindArguments.getBindingKey());
+            System.out.println("[BrokerServer]创建binding完成!queueName= "+queueBindArguments.getQueueName()+",exchangeName= "+queueBindArguments.getExchangeName());
+        }else if(request.getType() == 0x8){
+            //删除binding
+            QueueUnBindArguments queueUnBindArguments = (QueueUnBindArguments) basicArguments;
+            ok = virtualHost.queueUnbind(queueUnBindArguments.getExchangeName(), queueUnBindArguments.getQueueName());
+            System.out.println("[BrokerServer]删除binding完成!queueName= "+queueUnBindArguments.getQueueName()+",exchangeName= "+queueUnBindArguments.getExchangeName());
+        }else if(request.getType() == 0x9){
+            //发送消息
+            BasicPublishArguments basicPublishArguments = (BasicPublishArguments) basicArguments;
+            ok = virtualHost.basicPublish(basicPublishArguments.getExchangeName(), basicPublishArguments.getRoutingKey(), basicPublishArguments.getBasicProperties(),
+                    basicPublishArguments.getBody());
+            System.out.println("[BrokerServer]发送消息完成!");
+        }else if(request.getType() == 0xa){
+            //订阅队列
+            BasicConsumeArguments basicConsumeArguments = (BasicConsumeArguments) basicArguments;
+            ok = virtualHost.basicConsume(basicConsumeArguments.getConsumerTag(), basicConsumeArguments.getQueueName(), basicConsumeArguments.isAutoAck(),
+            new Consumer() {
+                //服务器直接将消息写回给客户端
+                @Override
+                public void handlerDelivery(String consumerTag, BasicProperties basicProperties, byte[] body) throws MqException, IOException {
+                    //consumerTag为对应的channelId,根据channelId从sessions中找回socket,然后写回给客户端
+                    Socket cilSocket = sessions.get(consumerTag);
+                    if(cilSocket == null || cilSocket.isClosed()){
+                        throw new MqException("[BrokerServer]订阅消息的客户端已经关闭!");
+                    }
+                    //构造响应数据
+                    SubscribeReturns subscribeReturns = new SubscribeReturns();
+                    subscribeReturns.setChannelId(consumerTag);
+                    subscribeReturns.setBasicProperties(basicProperties);
+                    subscribeReturns.setConsumerTag(consumerTag);
+                    subscribeReturns.setRid(" ");
+                    subscribeReturns.setOk(true);
+                    subscribeReturns.setBody(body);
+                    byte[] payload = BinaryTool.toByte(subscribeReturns);
+                    Response response = new Response();
+                    response.setType(0xc);
+                    response.setLength(payload.length);
+                    //把消息写回给客户端,要多次给客户端写回消息,此处不关闭socket
+                    DataOutputStream dataOutputStream = new DataOutputStream(cilSocket.getOutputStream());
+                    writeResponse(dataOutputStream,response);
+                }
+            });
+        }else if(request.getType() == 0xb){
+            //调用basicAck确认消息
+            BasicAckArguments basicAckArguments = (BasicAckArguments) basicArguments;
+            ok = virtualHost.basicAck(basicAckArguments.getQueueName(), basicAckArguments.getMessageId());
+        }else {
+            throw new MqException("[BrokerServer]未知的type,type= "+request.getType());
         }
-        return null;
+        BasicReturns basicReturns = new BasicReturns();
+        basicReturns.setChannelId(basicArguments.getChannelId());
+        basicReturns.setRid(basicArguments.getRid());
+        basicReturns.setOk(ok);
+        Response response = new Response();
+        response.setType(request.getType());
+        byte[] payload = BinaryTool.toByte(basicReturns);
+        response.setLength(payload.length);
+        response.setPayload(payload);
+        System.out.println("[Response] rid= "+basicReturns.getRid()+",channelId= "+basicReturns.getChannelId()+",type= "
+                +response.getType()+",length= "+request.getLength());
+        return response;
     }
 
     private Request readRequest(DataInputStream dataInputStream) throws IOException {
@@ -115,7 +200,7 @@ public class BrokerServer {
         byte[] payload = new byte[request.getLength()];
         int n  = dataInputStream.read(payload);
         if(n != request.getLength()){
-            throw new IOException("读取请求格式出错");
+            throw new IOException("[BrokerServer]读取请求格式出错");
         }
         request.setPayload(payload);
         return request;

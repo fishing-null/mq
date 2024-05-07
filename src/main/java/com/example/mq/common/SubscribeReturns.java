@@ -7,7 +7,7 @@ import java.io.Serializable;
 public class SubscribeReturns extends BasicReturns implements Serializable {
     private String consumerTag;
     private BasicProperties basicProperties;
-    private byte[] bytes;
+    private byte[] body;
 
     public String getConsumerTag() {
         return consumerTag;
@@ -25,11 +25,11 @@ public class SubscribeReturns extends BasicReturns implements Serializable {
         this.basicProperties = basicProperties;
     }
 
-    public byte[] getBytes() {
-        return bytes;
+    public byte[] getBody() {
+        return body;
     }
 
-    public void setBytes(byte[] bytes) {
-        this.bytes = bytes;
+    public void setBody(byte[] body) {
+        this.body = body;
     }
 }
