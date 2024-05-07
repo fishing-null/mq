@@ -7,6 +7,9 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -79,6 +82,17 @@ public class BrokerServer {
     }
 
     private void clearClosedSession(Socket clientSocket) {
+        //遍历sessions表,关闭socket对应的channel
+        List<String> toDeleteChannelId = new ArrayList<>();
+        for(Map.Entry<String,Socket> entry:sessions.entrySet()){
+            if(entry.getValue() == clientSocket){
+                toDeleteChannelId.add(entry.getKey());
+            }
+        }
+        for(String channelId:toDeleteChannelId){
+            sessions.remove(channelId);
+        }
+        System.out.println("[BrokerServer]清理session完成,被清理的channelId= "+toDeleteChannelId);
     }
 
     private void writeResponse(DataOutputStream dataOutputStream, Response response) throws IOException {
@@ -151,8 +165,8 @@ public class BrokerServer {
                 @Override
                 public void handlerDelivery(String consumerTag, BasicProperties basicProperties, byte[] body) throws MqException, IOException {
                     //consumerTag为对应的channelId,根据channelId从sessions中找回socket,然后写回给客户端
-                    Socket cilSocket = sessions.get(consumerTag);
-                    if(cilSocket == null || cilSocket.isClosed()){
+                    Socket cliSocket = sessions.get(consumerTag);
+                    if(cliSocket == null || cliSocket.isClosed()){
                         throw new MqException("[BrokerServer]订阅消息的客户端已经关闭!");
                     }
                     //构造响应数据
@@ -168,7 +182,7 @@ public class BrokerServer {
                     response.setType(0xc);
                     response.setLength(payload.length);
                     //把消息写回给客户端,要多次给客户端写回消息,此处不关闭socket
-                    DataOutputStream dataOutputStream = new DataOutputStream(cilSocket.getOutputStream());
+                    DataOutputStream dataOutputStream = new DataOutputStream(cliSocket.getOutputStream());
                     writeResponse(dataOutputStream,response);
                 }
             });
