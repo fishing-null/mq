@@ -172,6 +172,7 @@ public class Channel {
         BasicPublishArguments basicPublishArguments = new BasicPublishArguments();
         String rid = generatedRid();
         basicPublishArguments.setChannelId(channelId);
+        basicPublishArguments.setExchangeName(exchangeName);
         basicPublishArguments.setRid(rid);
         basicPublishArguments.setRoutingKey(routingKey);
         basicPublishArguments.setBasicProperties(basicProperties);

@@ -31,17 +31,23 @@ public class BrokerServer {
     public void start() throws IOException {
         System.out.println("[BorkerServer]启动!");
         executorService = Executors.newCachedThreadPool();
-        while (runnable){
-            Socket clientSocket = serverSocket.accept();
-            executorService.submit(()->{
-                try {
-                    processConnection(clientSocket);
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
-                    System.out.println("[BrokerServer]启动失败！类型转换错误!");
-                }
-            });
+        try {
+            while (runnable){
+                Socket clientSocket = serverSocket.accept();
+                executorService.submit(()->{
+                    try {
+                        processConnection(clientSocket);
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                        System.out.println("[BrokerServer]启动失败!类型转换错误!");
+                    }
+                });
+            }
+        }catch (SocketException e){
+            System.out.println("[BrokerServer]服务器停止运行");
+            //e.printStackTrace();
         }
+
     }
 
     //停止服务器
@@ -181,6 +187,7 @@ public class BrokerServer {
                     Response response = new Response();
                     response.setType(0xc);
                     response.setLength(payload.length);
+                    response.setPayload(payload);
                     //把消息写回给客户端,要多次给客户端写回消息,此处不关闭socket
                     DataOutputStream dataOutputStream = new DataOutputStream(cliSocket.getOutputStream());
                     writeResponse(dataOutputStream,response);
