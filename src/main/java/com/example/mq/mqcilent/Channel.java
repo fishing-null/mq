@@ -236,15 +236,53 @@ public class Channel {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-
             }
         }
         basicReturnsMap.remove(rid);
         return basicReturns;
     }
-
+    public void putReturns(BasicReturns basicReturns) {
+        basicReturnsMap.put(basicReturns.getRid(),basicReturns);
+        synchronized (this){
+            notifyAll();
+        }
+    }
     private String generatedRid(){
         String rid = "R-"+ UUID.randomUUID().toString();
         return rid;
     }
+
+    public String getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(String channelId) {
+        this.channelId = channelId;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public void setConnection(Connection connection) {
+        this.connection = connection;
+    }
+
+    public ConcurrentHashMap<String, BasicReturns> getBasicReturnsMap() {
+        return basicReturnsMap;
+    }
+
+    public void setBasicReturnsMap(ConcurrentHashMap<String, BasicReturns> basicReturnsMap) {
+        this.basicReturnsMap = basicReturnsMap;
+    }
+
+    public Consumer getConsumer() {
+        return consumer;
+    }
+
+    public void setConsumer(Consumer consumer) {
+        this.consumer = consumer;
+    }
+
+
 }
