@@ -5,6 +5,7 @@ import com.example.mq.common.Response;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Connection {
@@ -43,5 +44,21 @@ public class Connection {
         response.setPayload(payload);
         System.out.println("[Connection]接收响应,type= "+response.getType()+",length= "+response.getLength());
         return response;
+    }
+
+    //通过这个方法在Connection中创建channel
+    public Channel createChannel() throws IOException {
+        String channelId = "C-"+UUID.randomUUID().toString();
+        Channel channel = new Channel(channelId,this);
+        //把这个connection管理的所有channel对象放到hashmap中
+        channelMap.put(channelId,channel);
+        //把创建channel同步给服务器
+        boolean ok = channel.createChannel();
+        if(!ok){
+            //创建channel失败,把刚才加入hashmap的键值对删除
+            channelMap.remove(channelId);
+            return null;
+        }
+        return channel;
     }
 }
